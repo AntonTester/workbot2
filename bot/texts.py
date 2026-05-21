@@ -292,8 +292,8 @@ class Texts:
     BTN_QUEST = "Текущий Квест"  # Не забудь добавить эту кнопку в клавиатуру!
 
     @staticmethod
-    def quest_menu(quest, energy: int, max_energy: int) -> str:
-        """Генерирует главное меню активного квеста."""
+    def quest_menu(quest) -> str:
+        """Генерирует главное меню активного квеста с историей событий."""
         if not quest or quest.status != "active":
             return "🗺 <i>У вас нет активного квеста. Загляните на Доску Контрактов.</i>"
 
@@ -301,44 +301,81 @@ class Texts:
             f"🗺 <b>КВЕСТ: {quest.quest_name}</b>\n"
             f"───────────────────────\n"
             f"<i>{quest.description}</i>\n\n"
-            f"⏳ <b>День:</b> {quest.current_day} из {quest.max_days}\n"
-            f"⚡ <b>Энергия:</b> {energy}/{max_energy}\n\n"
+            f"⏳ <b>День:</b> {quest.current_day+1} из {quest.max_days}\n"
             f"🏆 <b>Награда:</b> 💰 {quest.gold_reward} | 🔺 {quest.exp_reward} XP\n"
         )
 
-        if quest.flags:
-            text += f"\n🚩 <b>Полученные зацепки (Флаги):</b>\n  • " + "\n  • ".join(quest.flags)
+        # === НОВЫЙ БЛОК: ИСТОРИЯ ЭВЕНТОВ ===
+        text += "\n📖 <b>Журнал событий:</b>\n"
 
-        return text
+        # Берем все эвенты от старта (0) до текущего дня (включительно)
+        # Обязательно проверяем длину списка, чтобы не словить ошибку IndexError
+        for i in range(quest.current_day + 1):
+            if i < len(quest.cycle_steps):
+                step = quest.cycle_steps[i]
+
+                # Поддерживаем как объекты (DataClasses), так и сырые словари (Dicts) из базы
+                step_num = step.number if hasattr(step, 'number') else step['number']
+                step_title = step.display_name if hasattr(step, 'display_name') else step['display_name']
+                step_desc = step.description if hasattr(step, 'description') else step['description']
+
+                text += f"  🔹 <b>{step_title}</b>\n"
+                text += f"      <i>{step_desc}</i>\n\n"
+
+        return text.strip()  # Убираем лишние переносы строк в самом конце
+
+    @staticmethod
+    def daily_event_message(day: int, title: str, desc: str) -> str:
+        """Текст сюжетного события при наступлении нового дня."""
+        return (
+            f"🌅 <b>ДЕНЬ {day}: {title}</b>\n"
+            f"───────────────────────\n"
+            f"<i>{desc}</i>"
+        )
 
     @staticmethod
     def task_menu(task) -> str:
-        """Генерирует описание конкретной задачи перед броском."""
+        """Генерирует описание конкретной задачи перед броском (без энергии)."""
         return (
             f"⚔️ <b>ЗАДАЧА: {task.display_name}</b>\n"
             f"───────────────────────\n"
             f"<i>{task.description}</i>\n\n"
-            f"Выберите подход (проверку навыка) ниже. Учтите затраты энергии!"
+            f"Выберите подход (проверку навыка) ниже:"
         )
 
     @staticmethod
     def quest_check_result(result) -> str:
         """Лог выполнения задачи в квесте. Принимает QuestCheckResult."""
-        text = f"⚡ <b>Потрачено энергии:</b> {result.energy_spent}\n\n"
+        from core.status_registry import StatusRegistry  # Импорт для расшифровки дебаффов
 
-        # Используем наш старый, проверенный метод форматирования D&D бросков!
-        text += Texts.format_roll(result.roll_data) + "\n\n"
+        text = Texts.format_roll(result.roll_data) + "\n\n"
 
-        # Выводим нарративное сообщение об успехе/провале
+        # Нарративное сообщение
         if result.success:
             text += f"✅ <i>{result.message}</i>\n"
         else:
             text += f"❌ <i>{result.message}</i>\n"
 
+        # Вывод последствий (TaskEffects)
+        if result.damage_taken > 0:
+            text += f"\n🩸 <b>Урон от последствий:</b> -{result.damage_taken} HP"
+
+        # === ОБНОВЛЕННЫЙ БЛОК ДЕБАФФОВ ===
+        if result.debuffs_received:
+            text += f"\n🦠 <b>Наложены негативные эффекты:</b>\n"
+            for d in result.debuffs_received:
+                template = StatusRegistry.get(d)
+                if template:
+                    # Выводим красивое название и лорное описание
+                    text += f"  • <b>{template.name_text}</b> — <i>{template.description}</i>\n"
+                else:
+                    # Фолбэк, если дебаффа вдруг нет в БД
+                    text += f"  • <b>{d}</b>\n"
+
         # Если квест полностью пройден
         if result.quest_completed:
             text += (
-                f"\n───────────────────────\n"
+                f"\n\n───────────────────────\n"
                 f"🏆 <b>ГЛОБАЛЬНЫЙ УСПЕХ: КВЕСТ ЗАВЕРШЕН!</b> 🏆\n"
                 f"💰 <b>Золото:</b> +{result.gold_reward}\n"
                 f"🔺 <b>Опыт:</b> +{result.xp_reward}"

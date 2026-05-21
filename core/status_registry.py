@@ -51,6 +51,17 @@ class Disease(StatusTemplate):
         super().__init__(unique_name, name_text, description, effect_desc, flags, effects)
         self.duration_days = duration_days
 
+class Debuff:
+    """Временный негативный эффект (чаще всего от квестов)."""
+    type = 'debuff'
+    def __init__(self, name: str, name_text: str, description: str, effect: str, duration_days: int, flags: list, effects: dict):
+        self.name = name
+        self.name_text = name_text
+        self.description = description
+        self.effect = effect
+        self.duration_days = duration_days
+        self.flags = flags
+        self.effects = effects
 
 # === 3. Реестр (База данных игры в памяти) ===
 class StatusRegistry:

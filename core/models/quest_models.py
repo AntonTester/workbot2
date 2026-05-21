@@ -10,6 +10,23 @@ class Action:
     effect: str
 
 @dataclass
+class TaskEffect:
+    """Эффект, применяемый при успехе или провале (flag, damage, debuff)."""
+    type_effect: str
+    value: str
+
+@dataclass
+class Check:
+    """Проверка навыка без энергии, но с массивами эффектов."""
+    skill: str
+    display_name: str
+    difficulty: str
+    success_message: str
+    fail_message: str
+    success_effects: List[TaskEffect] = field(default_factory=list)
+    fail_effects: List[TaskEffect] = field(default_factory=list)
+
+@dataclass
 class CycleStep:
     number: int
     display_name: str
@@ -22,15 +39,6 @@ class Boost:
     skills: List[str]
     is_disposable: bool
 
-@dataclass
-class Check:
-    skill: str
-    display_name: str
-    difficulty: str
-    energy: int
-    success_message: str
-    fail_message: str
-    success_effect: List[str]
 
 @dataclass
 class TaskStep:
@@ -57,19 +65,49 @@ class Quest:
     current_day: int = 0
     status: str = "active" # active, completed, failed
 
+
+@dataclass
+class TaskEffect:
+    """Эффект, применяемый при успехе или провале (flag, damage, debuff)."""
+    type_effect: str
+    value: str
+
+@dataclass
+class Check:
+    """Проверка навыка без энергии, но с массивами эффектов."""
+    skill: str
+    display_name: str
+    difficulty: str
+    success_message: str
+    fail_message: str
+    success_effects: List[TaskEffect] = field(default_factory=list)
+    fail_effects: List[TaskEffect] = field(default_factory=list)
+
+
 @dataclass
 class QuestCheckResult:
     """Типизированный результат выполнения проверки в квесте."""
     success: bool
     message: str
-    roll_data: Any  # Объект броска кубика (RollData) для форматирования в texts.py
-    energy_spent: int
+    roll_data: Any
     quest_completed: bool
     gold_reward: int = 0
     xp_reward: int = 0
+    damage_taken: int = 0                     # <--- НОВОЕ ПОЛЕ
+    debuffs_received: List[str] = field(default_factory=list) # <--- НОВОЕ ПОЛЕ
 
 @dataclass
 class QuestBuyResult:
-    """Типизированный результат покупки экшена в квесте."""
     success: bool
     message: str
+
+@dataclass
+class QuestEventResult:
+    """Результат продвижения квеста на следующий день."""
+    success: bool
+    message: str
+    is_failed: bool = False
+    step_title: str = ""
+    step_desc: str = ""
+    day: int = 0
+

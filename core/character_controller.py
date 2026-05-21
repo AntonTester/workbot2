@@ -138,9 +138,8 @@ class CharacterController:
     # ==========================================
 
     def _modify_hp(self, amount: int):
-        """Изменяет здоровье. Блокирует любой отрицательный урон."""
-        if amount < 0:
-            amount = 0
+        """Изменяет здоровье (может быть как исцелением, так и уроном)."""
+        # Убрана блокировка (if amount < 0: amount = 0)
         self.model.hp = max(0, min(self.model.max_hp, self.model.hp + amount))
 
     def _add_xp(self, amount: int):
@@ -225,7 +224,7 @@ class CharacterController:
             success, gold_to_spend = GameCalculator.calculate_purchase(self.model.gold, price)
 
             if not success:
-                return PurchaseResult(success=False, error=f"Недостаточно золота. Требуется: {price} 💰")
+                return PurchaseResult(success=False, error=f"Недостаточно золота. Требуется: {price} 🌕")
 
             self._add_gold(-gold_to_spend)
             self._give_item(name_text, 1)

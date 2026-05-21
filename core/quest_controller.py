@@ -1,6 +1,6 @@
 import random
 from typing import List
-from core.models.quest_models import Quest, TaskStep, Action, QuestCheckResult, QuestBuyResult
+from core.models.quest_models import Quest, TaskStep, Action, QuestCheckResult, QuestBuyResult, QuestEventResult
 from core.game_calculator import GameCalculator
 from db.quest_repo import QuestRepo
 
@@ -15,6 +15,31 @@ class QuestController:
         self.hero_ctrl = character_controller
         self.repo = quest_repo
         self.quest = self.repo.get_active_quest(self.hero_ctrl.model.user_id)
+
+    def process_daily_event(self) -> QuestEventResult:
+        """Перематывает день вперед и возвращает текстовый эвент."""
+        if not self.quest or self.quest.status != "active":
+            return QuestEventResult(False, "Нет активного квеста.")
+
+        self.quest.current_day += 1
+
+        # Если закончились лимиты дней (эвенты)
+        if self.quest.current_day >= len(self.quest.cycle_steps):
+            self.quest.status = "failed"
+            self.repo.save_quest(self.hero_ctrl.model.user_id, self.quest)
+            return QuestEventResult(True, "Время вышло", is_failed=True)
+
+        # Достаем эвент текущего дня и сохраняем прогресс!
+        current_step = self.quest.cycle_steps[self.quest.current_day]
+        self.repo.save_quest(self.hero_ctrl.model.user_id, self.quest)
+
+        return QuestEventResult(
+            success=True,
+            message="Успех",
+            step_title=current_step.display_name,
+            step_desc=current_step.description,
+            day=self.quest.current_day
+        )
 
     def get_available_tasks(self) -> List[TaskStep]:
         """Возвращает задачи, у которых выполнены зависимости и нет блокирующих флагов."""
@@ -36,27 +61,17 @@ class QuestController:
         return available
 
     async def perform_task_check(self, task_name: str, check_index: int) -> QuestCheckResult:
-        """
-        Выполняет проверку навыка.
-        Тратит энергию, рассчитывает бросок через GameCalculator, начисляет флаги и награды.
-        """
+        """Выполняет проверку навыка, применяет TaskEffects и начисляет награды."""
         if not self.quest or self.quest.status != "active":
-            return QuestCheckResult(False, "Квест не найден или завершен.", None, 0, False)
+            return QuestCheckResult(False, "Квест не найден или завершен.", None, False)
 
-        # Находим нужную задачу и проверку
         task = next((t for t in self.quest.task_steps if t.name == task_name), None)
         if not task or check_index >= len(task.checks):
-            return QuestCheckResult(False, "Задача или проверка не найдена.", None, 0, False)
+            return QuestCheckResult(False, "Задача или проверка не найдена.", None, False)
 
         check = task.checks[check_index]
 
-        # 1. Проверка Энергии
-        if self.hero_ctrl.model.energy < check.energy:
-            return QuestCheckResult(False, "Недостаточно энергии! Герой истощен.", None, 0, False)
-
-        self.hero_ctrl.model.energy -= check.energy
-
-        # 2. Сбор экстра-бонусов от усилителей (Boosts)
+        # 1. Сбор экстра-бонусов от усилителей (Boosts)
         extra_bonus = 0
         used_disposable_flags = []
 
@@ -75,7 +90,7 @@ class QuestController:
         for f in used_disposable_flags:
             self.quest.flags.remove(f)
 
-        # 3. Бросок кубика через Калькулятор
+        # 2. Бросок кубика через Калькулятор
         dc = int(check.difficulty)
         roll_data = GameCalculator.calculate_quest_check(
             self.hero_ctrl.model,
@@ -85,44 +100,67 @@ class QuestController:
             extra_bonus
         )
 
+        # 3. Обработка динамических эффектов (TaskEffects)
+        effects_to_apply = check.success_effects if roll_data.is_success else check.fail_effects
+
+        damage_taken = 0
+        debuffs_received = []
+
+        for eff in effects_to_apply:
+            if eff.type_effect == "flag":
+                if eff.value not in self.quest.flags:
+                    self.quest.flags.append(eff.value)
+
+            elif eff.type_effect == "damage":
+                dmg = 0
+                val = eff.value.lower()
+                if 'd' in val:
+                    parts = val.split('d')
+                    count = int(parts[0]) if parts[0] else 1
+                    sides = int(parts[1])
+                    for _ in range(count):
+                        dmg += random.randint(1, sides)
+                else:
+                    dmg = int(val)
+                damage_taken += dmg
+
+            elif eff.type_effect == "debuff":
+                print("ga")
+                self.hero_ctrl._apply_status(eff.value)
+                debuffs_received.append(eff.value)
+
+        # Применяем полученный урон
+        if damage_taken > 0:
+            self.hero_ctrl._modify_hp(-damage_taken)
+
+        # 4. Проверяем условие победы в Квесте
         quest_completed = False
         gold_gained = 0
         xp_gained = 0
 
-        # 4. Обработка результатов
-        if roll_data.is_success:
-            # Выдаем флаги
-            for f in check.success_effect:
-                if f not in self.quest.flags:
-                    self.quest.flags.append(f)
+        if "win" in self.quest.flags:
+            self.quest.status = "completed"
+            gold_gained = self.quest.gold_reward
+            xp_gained = self.quest.exp_reward
+            self.hero_ctrl._add_gold(gold_gained)
+            self.hero_ctrl._add_xp(xp_gained)
+            quest_completed = True
 
-            # Проверяем условие победы в Квесте
-            if "win" in self.quest.flags:
-                self.quest.status = "completed"
-                gold_gained = self.quest.gold_reward
-                xp_gained = self.quest.exp_reward
-
-                self.hero_ctrl._add_gold(gold_gained)
-                self.hero_ctrl._add_xp(xp_gained)
-                quest_completed = True
-                message = check.success_message
-            else:
-                message = check.success_message
-        else:
-            message = check.fail_message
+        message = check.success_message if roll_data.is_success else check.fail_message
 
         # 5. Сохранение состояния
         self.repo.save_quest(self.hero_ctrl.model.user_id, self.quest)
-        await self.hero_ctrl.save_all()  # Сохраняем энергию, золото и ХП
+        await self.hero_ctrl.save_all()
 
         return QuestCheckResult(
             success=roll_data.is_success,
             message=message,
             roll_data=roll_data,
-            energy_spent=check.energy,
             quest_completed=quest_completed,
             gold_reward=gold_gained,
-            xp_reward=xp_gained
+            xp_reward=xp_gained,
+            damage_taken=damage_taken,
+            debuffs_received=debuffs_received
         )
 
     async def buy_action(self, action_name: str) -> QuestBuyResult:

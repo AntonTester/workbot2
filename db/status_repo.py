@@ -17,6 +17,7 @@ class StatusRepo:
                     cursor.fetchall()]
 
     def add_status(self, user_id: int, name: str, status_type: str, duration_hours: int = None):
+        print("ga2")
         expires_at = None
         if duration_hours:
             expires_at = datetime.datetime.now() + datetime.timedelta(hours=duration_hours)

@@ -12,8 +12,6 @@ class Character:
         self.name = name
         self.hp = 9
         self.max_hp = 9
-        self.energy = 20      # Новое поле
-        self.max_energy = 20  # Новое поле
         self.xp = 0
         self.level = 1
         self.gold = 0

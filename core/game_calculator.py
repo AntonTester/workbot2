@@ -19,23 +19,51 @@ class GameCalculator:
         16: 195000, 17: 225000, 18: 265000, 19: 305000, 20: 355000
     }
 
+    # Карта навыков (поддерживает и английские, и русские ключи из JSON)
+    SKILL_MAP = {
+        "athletics": ("Атлетика", "STR"), "атлетика": ("Атлетика", "STR"),
+        "acrobatics": ("Акробатика", "DEX"), "акробатика": ("Акробатика", "DEX"),
+        "sleight_of_hand": ("Ловкость рук", "DEX"), "ловкость рук": ("Ловкость рук", "DEX"),
+        "stealth": ("Скрытность", "DEX"), "скрытность": ("Скрытность", "DEX"),
+        "arcana": ("Магия", "INT"), "магия": ("Магия", "INT"),
+        "history": ("История", "INT"), "история": ("История", "INT"),
+        "investigation": ("Расследование", "INT"), "расследование": ("Расследование", "INT"),
+        "nature": ("Природа", "INT"), "природа": ("Природа", "INT"),
+        "religion": ("Религия", "INT"), "религия": ("Религия", "INT"),
+        "animal_handling": ("Уход за животными", "WIS"), "уход за животными": ("Уход за животными", "WIS"),
+        "insight": ("Проницательность", "WIS"), "проницательность": ("Проницательность", "WIS"),
+        "medicine": ("Медицина", "WIS"), "медицина": ("Медицина", "WIS"),
+        "perception": ("Восприятие", "WIS"), "восприятие": ("Восприятие", "WIS"),
+        "survival": ("Выживание", "WIS"), "выживание": ("Выживание", "WIS"),
+        "deception": ("Обман", "CHA"), "обман": ("Обман", "CHA"),
+        "intimidation": ("Запугивание", "CHA"), "запугивание": ("Запугивание", "CHA"),
+        "performance": ("Выступление", "CHA"), "выступление": ("Выступление", "CHA"),
+        "persuasion": ("Убеждение", "CHA"), "убеждение": ("Убеждение", "CHA")
+    }
+
+    # Профильные навыки Астры (получают +2)
+    ASTRA_PROFICIENCIES = ["Убеждение", "Восприятие", "Проницательность", "Атлетика", "Природа", "История"]
+
     @classmethod
-    def calculate_quest_check(cls, model, active_statuses, skill_name: str, dc: int, extra_bonus_val: int) -> Any:
+    def calculate_quest_check(cls, model, active_statuses, raw_skill_name: str, dc: int, extra_bonus_val: int) -> Any:
         """
         Рассчитывает бросок навыка через стандартный RollDicer.
+        Бонус мастерства (+2) дается ТОЛЬКО если навык есть в ASTRA_PROFICIENCIES.
         """
         from core.roll_dicer import RollDicer
         from core.roll_bonus import RollBonus
 
-        # Определяем базовую характеристику для этого навыка
-        stat_key = cls.SKILL_MAP.get(skill_name, "STR")
+        # Переводим навык на русский и определяем стату (например: "Убеждение", "CHA")
+        skill_key_lower = raw_skill_name.lower().strip()
+        skill_name_ru, stat_key = cls.SKILL_MAP.get(skill_key_lower, (raw_skill_name, "STR"))
 
-        # Собираем дополнительные бонусы квеста (Мастерство + Усилитель)
         extra_bonuses = []
 
-        proficiency_bonus = 2
-        extra_bonuses.append(RollBonus(value=proficiency_bonus, source="Мастерство"))
+        # Проверка на владение навыком (Proficiency)
+        if skill_name_ru in cls.ASTRA_PROFICIENCIES:
+            extra_bonuses.append(RollBonus(value=2, source="Мастерство"))
 
+        # Добавляем бонусы от предметов/экшенов квеста
         if extra_bonus_val > 0:
             extra_bonuses.append(RollBonus(value=extra_bonus_val, source="Усилитель (Boost)"))
 
@@ -45,7 +73,7 @@ class GameCalculator:
             active_statuses=active_statuses,
             stat_key=stat_key,
             dc=dc,
-            roll_type=f"Проверка: {skill_name}",
+            roll_type=f"Проверка: {skill_name_ru}",
             advantage=False,
             disadvantage=False,
             extra_bonuses=extra_bonuses
