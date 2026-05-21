@@ -259,7 +259,7 @@ class CharacterController:
             return {"success": True, "message": f"Вы продали {name_text} за {sell_price} 🌕."}
 
     async def use_potion(self, item_id: str) -> dict:
-        """Использование зелий лечения и очищения."""
+        """Использование зелий лечения, очищения и бодрости."""
         async with self.lock:
             item_def = self.items_repo.get_item_by_id(item_id)
             if not item_def:
@@ -282,6 +282,18 @@ class CharacterController:
                     msg = f"Очищение сработало. Вы излечились от: {cured} ✨"
                 else:
                     msg = "Вы были абсолютно здоровы. Зелье потрачено впустую 💨"
+
+            # ИСПРАВЛЕНО: Добавлена логика снятия усталости
+            elif item_id == "energy_potion":
+                # Проверяем, есть ли вообще усталость на персонаже
+                has_tired = any((s.name if hasattr(s, 'name') else s["name"]) == "tired" for s in self.active_statuses)
+
+                if has_tired:
+                    # Вызываем системный метод удаления статуса
+                    self._remove_status("tired")
+                    msg = "Вы выпили Зелье бодрости. Усталость как рукой сняло! Помехи к проверкам исчезли. 🌅"
+                else:
+                    msg = "Вы полны сил и не чувствуете усталости. Зелье выпито впустую, но его вкус вас взбодрил. 💨"
             else:
                 return {"success": False, "message": "Этот предмет нельзя использовать."}
 
