@@ -45,41 +45,49 @@ class GameCalculator:
     ASTRA_PROFICIENCIES = ["Убеждение", "Восприятие", "Проницательность", "Атлетика", "Природа", "История"]
 
     @classmethod
-    def calculate_quest_check(cls, model, active_statuses, raw_skill_name: str, dc: int, extra_bonus_val: int) -> Any:
-        """
-        Рассчитывает бросок навыка через стандартный RollDicer.
-        Бонус мастерства (+2) дается ТОЛЬКО если навык есть в ASTRA_PROFICIENCIES.
-        """
+    def calculate_quest_check(cls, model, active_statuses, raw_skill_name: str, dc: int, extra_bonus_val: int):
         from core.roll_dicer import RollDicer
         from core.roll_bonus import RollBonus
+        from core.status_registry import StatusRegistry  # Для чтения эффектов
 
-        # Переводим навык на русский и определяем стату (например: "Убеждение", "CHA")
         skill_key_lower = raw_skill_name.lower().strip()
         skill_name_ru, stat_key = cls.SKILL_MAP.get(skill_key_lower, (raw_skill_name, "STR"))
 
-        extra_bonuses = []
+        # Ищем помехи и преимущества в активных статусах
+        adv = False
+        disadv = False
 
-        # Проверка на владение навыком (Proficiency)
+        for s in active_statuses:
+            name_key = s.name if hasattr(s, 'name') else s["name"]
+            template = StatusRegistry.get(name_key)
+            if template and hasattr(template, 'effects'):
+                # Проверяем, есть ли флаг помехи для этой конкретной статы (например, DISADVANTAGE_STR)
+                if template.effects.get(f"ADVANTAGE_{stat_key}") or template.effects.get("ADVANTAGE"):
+                    adv = True
+                if template.effects.get(f"DISADVANTAGE_{stat_key}") or template.effects.get("DISADVANTAGE"):
+                    disadv = True
+
+        extra_bonuses = []
         if skill_name_ru in cls.ASTRA_PROFICIENCIES:
             extra_bonuses.append(RollBonus(value=2, source="Мастерство"))
 
-        # Добавляем бонусы от предметов/экшенов квеста
         if extra_bonus_val > 0:
             extra_bonuses.append(RollBonus(value=extra_bonus_val, source="Усилитель (Boost)"))
 
-        # Вызываем честный движок бросков!
+        # Вызываем бросок, передавая найденные помехи!
         roll_data = RollDicer.roll(
             character_model=model,
             active_statuses=active_statuses,
             stat_key=stat_key,
             dc=dc,
             roll_type=f"Проверка: {skill_name_ru}",
-            advantage=False,
-            disadvantage=False,
+            advantage=adv,
+            disadvantage=disadv,
             extra_bonuses=extra_bonuses
         )
 
         return roll_data
+
     @classmethod
     def calculate_purchase(cls, current_gold: int, item_price: int) -> tuple[bool, int]:
         if current_gold >= item_price:

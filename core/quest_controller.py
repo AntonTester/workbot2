@@ -46,14 +46,34 @@ class QuestController:
         if not self.quest or self.quest.status != "active":
             return []
 
+        from core.status_registry import StatusRegistry
+
         available = []
         q_flags = set(self.quest.flags)
 
+        # 1. Собираем все активные статусы персонажа в единый сет
+        char_flags = set()
+        for s in self.hero_ctrl.active_statuses:
+            s_name = s.name if hasattr(s, 'name') else s["name"]
+            char_flags.add(s_name)  # Добавляем само название статуса (например, 'tired')
+
+            # Достаем внутренние механики статуса, если они есть
+            template = StatusRegistry.get(s_name)
+            if template and hasattr(template, 'flags'):
+                for f in template.flags:
+                    # Флаги могут быть Enum, поэтому безопасно берем значение
+                    flag_val = f.value if hasattr(f, 'value') else f
+                    char_flags.add(flag_val)
+
+        # 2. Пул для проверки блокировок (Квестовые флаги + Статусы героя)
+        blocking_pool = q_flags | char_flags
+
         for task in self.quest.task_steps:
-            # Проверяем наличие всех требуемых флагов
+            # Зависимости проверяем строго по прогрессу квеста (q_flags)
             deps_met = all(f in q_flags for f in task.flags_dependency) if task.flags_dependency else True
-            # Проверяем отсутствие блокирующих флагов
-            not_blocked = not any(f in q_flags for f in task.flags_block) if task.flags_block else True
+
+            # Блокировки проверяем по объединенному пулу (blocking_pool)
+            not_blocked = not any(f in blocking_pool for f in task.flags_block) if task.flags_block else True
 
             if deps_met and not_blocked:
                 available.append(task)

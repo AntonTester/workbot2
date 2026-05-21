@@ -30,7 +30,6 @@ async def show_inventory(message: Message, hero: CharacterController):
 
     await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
-
 @router.callback_query(F.data.startswith("inv_use:"))
 async def handle_inventory_use(callback: CallbackQuery, hero: CharacterController):
     """Обрабатывает выпивание зелья."""
@@ -85,3 +84,4 @@ async def _update_inventory_view(callback: CallbackQuery, hero: CharacterControl
 
     kb = Keyboards.inventory_kb(active_items, items_db)
     await callback.message.edit_reply_markup(reply_markup=kb)
+    await callback.answer()

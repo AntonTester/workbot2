@@ -22,6 +22,7 @@ class RollDicer:
         # 1. Бросаем физический кубик
         dice_result = Dice.roll(advantage, disadvantage)
         pure_roll = dice_result["pure_roll"]
+        rolls = dice_result.get("rolls", [pure_roll])  # <--- Достаем массив кубиков
 
         bonuses = []
         bonuses.append(RollBonus(value=pure_roll, source="Бросок d20"))
@@ -73,5 +74,6 @@ class RollDicer:
             is_crit_fail=dice_result["is_crit_fail"],
             advantage=advantage,
             disadvantage=disadvantage,
-            bonuses=bonuses
+            bonuses=bonuses,
+            dice_rolls=rolls  # <--- Передаем их сюда
         )

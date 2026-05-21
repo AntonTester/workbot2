@@ -1,23 +1,25 @@
 import random
 
-
 class Dice:
-    """Виртуальный d20 кубик с механикой критов, преимущества и помехи."""
-
     @staticmethod
     def roll(advantage: bool = False, disadvantage: bool = False) -> dict:
-        roll1 = random.randint(1, 20)
-        roll2 = random.randint(1, 20)
+        r1 = random.randint(1, 20)
+        r2 = random.randint(1, 20)
+        rolls = [r1]
 
+        # Если есть и преимущество, и помеха - они отменяют друг друга
         if advantage and not disadvantage:
-            base_roll = max(roll1, roll2)
+            rolls = [r1, r2]
+            pure_roll = max(r1, r2)
         elif disadvantage and not advantage:
-            base_roll = min(roll1, roll2)
+            rolls = [r1, r2]
+            pure_roll = min(r1, r2)
         else:
-            base_roll = roll1
+            pure_roll = r1
 
         return {
-            "pure_roll": base_roll,
-            "is_crit_success": base_roll == 20,
-            "is_crit_fail": base_roll == 1
+            "pure_roll": pure_roll,
+            "rolls": rolls,  # <--- Добавили сохранение всех бросков
+            "is_crit_success": pure_roll == 20,
+            "is_crit_fail": pure_roll == 1
         }

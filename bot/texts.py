@@ -48,24 +48,28 @@ class Texts:
 
     @staticmethod
     def format_roll(roll_data) -> str:
-        """Генерирует подробный лог броска кубика на основе объекта RollData."""
+        """Генерирует подробный лог броска кубика."""
         parts = []
-        # Собираем строку из слагаемых: "12 (Бросок) + 2 (Мод. STR)"
         for i, bonus in enumerate(roll_data.bonuses):
             if i == 0:
-                parts.append(f"{bonus.value} ({bonus.source})")
+                # Если бросалось 2 кубика, выводим красиво: 4 (Из 15 и 4)
+                if hasattr(roll_data, 'dice_rolls') and len(roll_data.dice_rolls) > 1:
+                    parts.append(f"{bonus.value} (Из {roll_data.dice_rolls[0]} и {roll_data.dice_rolls[1]})")
+                else:
+                    parts.append(f"{bonus.value} ({bonus.source})")
             else:
                 sign = "+" if bonus.value >= 0 else "-"
                 parts.append(f"{sign} {abs(bonus.value)} ({bonus.source})")
 
         bd_str = " ".join(parts)
 
-        # Теги преимущества/помехи
+        # Теги преимущества/помехи (Отменяются, если включены оба)
         adv_text = ""
-        if roll_data.advantage: adv_text = " <i>[Преимущество]</i>"
-        if roll_data.disadvantage: adv_text = " <i>[Помеха]</i>"
+        if roll_data.advantage and not roll_data.disadvantage:
+            adv_text = " <i>[Преимущество]</i>"
+        if roll_data.disadvantage and not roll_data.advantage:
+            adv_text = " <i>[Помеха]</i>"
 
-        # Критические броски
         crit_text = ""
         if roll_data.is_crit_success: crit_text = "\n🎯 <b>КРИТИЧЕСКИЙ УСПЕХ (Натуральная 20)!</b>"
         if roll_data.is_crit_fail: crit_text = "\n💀 <b>КРИТИЧЕСКИЙ ПРОВАЛ (Натуральная 1)!</b>"

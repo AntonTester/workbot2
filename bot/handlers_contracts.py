@@ -62,7 +62,7 @@ async def execute_contract(call: CallbackQuery, hero: CharacterController):
         reply_markup=Keyboards.board_menu(contracts),
         parse_mode="HTML"
     )
-
+    await call.answer()
 # === 3. Запуск создания контракта ===
 @router.callback_query(F.data == "start_contract")
 async def start_contract_creation(call: CallbackQuery, state: FSMContext):
@@ -75,7 +75,7 @@ async def start_contract_creation(call: CallbackQuery, state: FSMContext):
         reply_markup=Keyboards.contract_draft_kb(0, 0, 0),
         parse_mode="HTML"
     )
-
+    await call.answer()
 # === 4. Обработка переключателей (inline кнопок) ===
 @router.callback_query(ContractForm.drafting, F.data.startswith("toggle_"))
 async def process_toggles(call: CallbackQuery, state: FSMContext):
@@ -93,13 +93,13 @@ async def process_toggles(call: CallbackQuery, state: FSMContext):
     await call.message.edit_reply_markup(
         reply_markup=Keyboards.contract_draft_kb(data["diff_idx"], data["dur_idx"], data["day_idx"])
     )
-
+    await call.answer()
 # === 5. Отмена создания ===
 @router.callback_query(ContractForm.drafting, F.data == "cancel_contract")
 async def cancel_creation(call: CallbackQuery, state: FSMContext):
     await state.clear()
     await call.message.edit_text(Texts.CONTRACT_CANCELED, parse_mode="HTML")
-
+    await call.answer()
 # === 6. Завершение создания (ввод названия текстом) ===
 @router.message(ContractForm.drafting, F.text)
 async def finalize_contract(message: Message, state: FSMContext):

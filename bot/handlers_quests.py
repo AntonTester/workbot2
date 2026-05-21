@@ -30,7 +30,6 @@ async def show_quest_menu(message: Message, hero):
 
     await message.answer(text, reply_markup=kb, parse_mode="HTML")
 
-
 @router.callback_query(F.data == "quest_main")
 async def back_to_quest_main(callback: CallbackQuery, hero):
     """Возврат в главное меню квеста через inline-кнопку."""
@@ -41,7 +40,7 @@ async def back_to_quest_main(callback: CallbackQuery, hero):
     kb = Keyboards.quest_main_kb(has_actions)
 
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-
+    await callback.answer()
 
 @router.callback_query(F.data == "quest_tasks")
 async def show_quest_tasks(callback: CallbackQuery, hero):
@@ -50,14 +49,14 @@ async def show_quest_tasks(callback: CallbackQuery, hero):
     tasks = q_ctrl.get_available_tasks()
 
     if not tasks:
-        await callback.answer("Нет доступных задач. Возможно, стоит подождать следующего дня.", show_alert=True)
+        await callback.answer("Нет доступных задач. Возможно, стоит подождать следующего дня или избавиться от усталости.", show_alert=True)
         return
 
     # Передаем список задач в фабрику для динамической генерации кнопок
     kb = Keyboards.quest_tasks_kb(tasks)
 
     await callback.message.edit_text("<b>Доступные задачи:</b>", reply_markup=kb, parse_mode="HTML")
-
+    await callback.answer()
 
 @router.callback_query(F.data.startswith("task_info_"))
 async def show_task_info(callback: CallbackQuery, hero):
@@ -76,7 +75,7 @@ async def show_task_info(callback: CallbackQuery, hero):
     kb = Keyboards.quest_task_info_kb(task.name, task.checks)
 
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-
+    await callback.answer()
 
 @router.callback_query(F.data.startswith("check:"))
 async def perform_task_check(callback: CallbackQuery, hero):
@@ -105,7 +104,7 @@ async def perform_task_check(callback: CallbackQuery, hero):
     kb = Keyboards.quest_back_main_kb()
 
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-
+    await callback.answer()
 
 @router.callback_query(F.data == "quest_next_day")
 async def advance_quest_day(callback: CallbackQuery, hero):
@@ -127,7 +126,7 @@ async def advance_quest_day(callback: CallbackQuery, hero):
     # Выводим текстовый эвент
     text = Texts.daily_event_message(result.day, result.step_title, result.step_desc)
     await callback.message.edit_text(text, reply_markup=Keyboards.quest_event_kb(), parse_mode="HTML")
-
+    await callback.answer()
 
 @router.callback_query(F.data == "quest_actions")
 async def show_quest_actions(callback: CallbackQuery, hero):
@@ -147,7 +146,7 @@ async def show_quest_actions(callback: CallbackQuery, hero):
     kb = Keyboards.quest_actions_kb(actions)
 
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
-
+    await callback.answer()
 
 @router.callback_query(F.data.startswith("quest_buy:"))
 async def buy_quest_action(callback: CallbackQuery, hero):
