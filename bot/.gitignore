@@ -1,0 +1,5 @@
+oskolki.db
+__pycache__/
+venv/
+*.pyc
+EOF
