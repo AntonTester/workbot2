@@ -232,7 +232,59 @@ class CharacterController:
             await self.save_all()
             return PurchaseResult(success=True, item_name=name_text, spent=gold_to_spend)
 
-    async def drink_potion_from_inventory(self, item_id: str) -> Any:
-        """Точка входа для использования зелий из инвентаря (в разработке)."""
+    async def sell_item(self, item_id: str) -> dict:
+        """Продажа предмета за 50% от его стоимости."""
         async with self.lock:
-            pass
+            # Получаем инфу из БД
+            item_def = self.items_repo.get_item_by_id(item_id)
+            if not item_def:
+                return {"success": False, "message": "Предмет не опознан."}
+
+            price = item_def.price if hasattr(item_def, 'price') else item_def['price']
+            name_text = item_def.name_text if hasattr(item_def, 'name_text') else item_def['name_text']
+
+            # Проверяем наличие именно по РУССКОМУ названию
+            inv_items = self.inventory.items if isinstance(self.inventory.items, dict) else (
+                        self.inventory.get_items() or {})
+            if inv_items.get(name_text, 0) <= 0:
+                return {"success": False, "message": "Этого предмета нет в инвентаре."}
+
+            sell_price = max(1, price // 2)
+
+            # Удаляем 1 предмет и даем золото
+            self._give_item(name_text, -1)
+            self._add_gold(sell_price)
+            await self.save_all()
+
+            return {"success": True, "message": f"Вы продали {name_text} за {sell_price} 🌕."}
+
+    async def use_potion(self, item_id: str) -> dict:
+        """Использование зелий лечения и очищения."""
+        async with self.lock:
+            item_def = self.items_repo.get_item_by_id(item_id)
+            if not item_def:
+                return {"success": False, "message": "Зелье не опознано."}
+
+            name_text = item_def.name_text if hasattr(item_def, 'name_text') else item_def['name_text']
+
+            inv_items = self.inventory.items if isinstance(self.inventory.items, dict) else (
+                        self.inventory.get_items() or {})
+            if inv_items.get(name_text, 0) <= 0:
+                return {"success": False, "message": "Этого зелья нет в инвентаре."}
+
+            msg = ""
+            if item_id == "healing_potion":
+                heal, _ = RewardManager.use_healing_potion(self)
+                msg = f"Вы выпили зелье и восстановили {heal} HP! ❤️"
+            elif item_id == "cure_disease_potion":
+                cured = RewardManager.use_cure_disease_potion(self)
+                if cured:
+                    msg = f"Очищение сработало. Вы излечились от: {cured} ✨"
+                else:
+                    msg = "Вы были абсолютно здоровы. Зелье потрачено впустую 💨"
+            else:
+                return {"success": False, "message": "Этот предмет нельзя использовать."}
+
+            self._give_item(name_text, -1)
+            await self.save_all()
+            return {"success": True, "message": msg}

@@ -15,12 +15,14 @@ from bot.handlers_profile import router as profile_router
 from bot.handlers_habits import router as habits_router
 from bot.handlers_contracts import router as contracts_router
 from bot.handlers_quests import router as quest_router
+from bot.handlers_inventory import router as inventory_router
 from bot.texts import Texts
 
 # ==========================================
 # КОНФИГУРАЦИЯ БОТА
 # ==========================================
-BOT_TOKEN = "5470429630:AAHr7SitrPYToupP0ukJjt0ZH0LCnDu5GkI"  # Вставьте сюда токен от BotFather
+BOT_TOKEN_MAIN = "5470429630:AAHr7SitrPYToupP0ukJjt0ZH0LCnDu5GkI"  # Вставьте сюда токен от BotFather
+BOT_TOKEN = "6451320447:AAEFDSNhzpm3Z9ahajLrzi4JbHBaohFrfRE"  # Вставьте сюда токен от BotFather
 ADMIN_ID = 505644694  # Вставьте сюда ВАШ Telegram ID!
 
 
@@ -57,7 +59,7 @@ async def main():
     dp.include_router(contracts_router)
     dp.include_router(shop_router)
     dp.include_router(quest_router)
-
+    dp.include_router(inventory_router)
     print(Texts.BOT_STARTED)
 
     # Пропускаем старые сообщения, которые накопились пока бот был выключен

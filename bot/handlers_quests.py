@@ -127,3 +127,40 @@ async def advance_quest_day(callback: CallbackQuery, hero):
     # Выводим текстовый эвент
     text = Texts.daily_event_message(result.day, result.step_title, result.step_desc)
     await callback.message.edit_text(text, reply_markup=Keyboards.quest_event_kb(), parse_mode="HTML")
+
+
+@router.callback_query(F.data == "quest_actions")
+async def show_quest_actions(callback: CallbackQuery, hero):
+    """Открывает магазин квестовых усилителей."""
+    q_ctrl = get_quest_ctrl(hero)
+
+    if not q_ctrl.quest or q_ctrl.quest.status != "active":
+        await callback.answer("Нет активного квеста.", show_alert=True)
+        return
+
+    actions = q_ctrl.quest.actions
+    if not actions:
+        await callback.answer("Для этого квеста нет доступных усилений.", show_alert=True)
+        return
+
+    text = "🛒 <b>ПОДГОТОВКА К ЗАДАЧАМ</b>\n───────────────────────\n<i>Здесь вы можете приобрести инструменты, которые дадут бонус к броскам.</i>"
+    kb = Keyboards.quest_actions_kb(actions)
+
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
+
+
+@router.callback_query(F.data.startswith("quest_buy:"))
+async def buy_quest_action(callback: CallbackQuery, hero):
+    """Покупка усилителя."""
+    action_name = callback.data.split(":")[1]
+    q_ctrl = get_quest_ctrl(hero)
+
+    result = await q_ctrl.buy_action(action_name)
+
+    if result.success:
+        await callback.answer(result.message, show_alert=True)
+        # Перекидываем обратно в меню квеста, чтобы отобразился купленный бонус
+        await back_to_quest_main(callback, hero)
+    else:
+        # Не хватило золота
+        await callback.answer(result.message, show_alert=True)

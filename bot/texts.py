@@ -114,7 +114,8 @@ class Texts:
         if not hero.active_statuses:
             sheet += "  <i>Ваш разум и тело девственно чисты.</i>\n"
         else:
-            buffs, injuries, diseases = [], [], []
+            # ИСПРАВЛЕНО: Добавили список debuffs
+            buffs, injuries, diseases, debuffs = [], [], [], []
 
             # Сортируем статусы по типам для красивого вывода
             for s in hero.active_statuses:
@@ -128,6 +129,8 @@ class Texts:
                     injuries.append(template.name_text)
                 elif template.type == 'disease':
                     diseases.append(template.name_text)
+                elif template.type == 'debuff':  # ИСПРАВЛЕНО: Обрабатываем новый тип
+                    debuffs.append(template.name_text)
 
             if buffs:
                 sheet += "  <b>✨ Благословения:</b>\n"
@@ -140,6 +143,10 @@ class Texts:
             if diseases:
                 sheet += "  <b>🦠 Болезни:</b>\n"
                 for d in diseases: sheet += f"    • {d}\n"
+
+            if debuffs:  # ИСПРАВЛЕНО: Выводим дебаффы
+                sheet += "  <b>📉 Ослабления:</b>\n"
+                for d in debuffs: sheet += f"    • {d}\n"
 
         # === ГРУППИРОВКА ПРЕДМЕТОВ В ИНВЕНТАРЕ ПО КАЧЕСТВУ ===
         sheet += "\n<b>📦 СОДЕРЖИМОЕ СУМОК:</b>\n"
@@ -302,7 +309,7 @@ class Texts:
             f"───────────────────────\n"
             f"<i>{quest.description}</i>\n\n"
             f"⏳ <b>День:</b> {quest.current_day+1} из {quest.max_days}\n"
-            f"🏆 <b>Награда:</b> 💰 {quest.gold_reward} | 🔺 {quest.exp_reward} XP\n"
+            f"🏆 <b>Награда:</b> 🌕 {quest.gold_reward} | 🔺 {quest.exp_reward} XP\n"
         )
 
         # === НОВЫЙ БЛОК: ИСТОРИЯ ЭВЕНТОВ ===
@@ -335,14 +342,24 @@ class Texts:
 
     @staticmethod
     def task_menu(task) -> str:
-        """Генерирует описание конкретной задачи перед броском (без энергии)."""
-        return (
+        """Генерирует описание конкретной задачи перед броском и выводит варианты."""
+        from core.game_calculator import GameCalculator
+
+        text = (
             f"⚔️ <b>ЗАДАЧА: {task.display_name}</b>\n"
             f"───────────────────────\n"
             f"<i>{task.description}</i>\n\n"
-            f"Выберите подход (проверку навыка) ниже:"
+            f"<b>Возможные подходы:</b>\n"
         )
 
+        for check in task.checks:
+            skill_lower = check.skill.lower().strip()
+            skill_ru = GameCalculator.SKILL_MAP.get(skill_lower, (check.skill, ""))[0]
+
+            # ИСПРАВЛЕНО: Теперь КС находится внутри жирного блока до текста
+            text += f"  🔹 <b>[{skill_ru}] (КС {check.difficulty})</b> {check.display_name}\n"
+
+        return text
     @staticmethod
     def quest_check_result(result) -> str:
         """Лог выполнения задачи в квесте. Принимает QuestCheckResult."""
@@ -377,7 +394,7 @@ class Texts:
             text += (
                 f"\n\n───────────────────────\n"
                 f"🏆 <b>ГЛОБАЛЬНЫЙ УСПЕХ: КВЕСТ ЗАВЕРШЕН!</b> 🏆\n"
-                f"💰 <b>Золото:</b> +{result.gold_reward}\n"
+                f"🌕 <b>Золото:</b> +{result.gold_reward}\n"
                 f"🔺 <b>Опыт:</b> +{result.xp_reward}"
             )
 

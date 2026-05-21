@@ -73,17 +73,59 @@ class Keyboards:
     @staticmethod
     def quest_task_info_kb(task_name: str, checks: list) -> InlineKeyboardMarkup:
         """Кнопки с проверками навыков для конкретной задачи."""
+        # Словарь склонений для красивого вывода кнопок (Винительный падеж)
+        ACCUSATIVE_SKILLS = {
+            "Атлетика": "атлетику", "Акробатика": "акробатику", "Магия": "магию",
+            "История": "историю", "Природа": "природу", "Религия": "религию",
+            "Медицина": "медицину"
+        }
+
         buttons = []
         for idx, check in enumerate(checks):
-            # Подтягиваем русское название навыка из калькулятора
             skill_lower = check.skill.lower().strip()
             skill_ru = GameCalculator.SKILL_MAP.get(skill_lower, (check.skill, ""))[0]
 
-            # Формируем кнопку. Используем двоеточие в callback_data
-            btn_text = f"[{skill_ru}] {check.display_name} (Сл: {check.difficulty})"
+            # Склоняем навык, а если его нет в словаре (например, "Обман") — просто пишем с маленькой буквы
+            skill_acc = ACCUSATIVE_SKILLS.get(skill_ru, skill_ru.lower())
+
+            btn_text = f"Применить {skill_acc}"
             buttons.append([InlineKeyboardButton(text=btn_text, callback_data=f"check:{task_name}:{idx}")])
 
         buttons.append([InlineKeyboardButton(text="🔙 К задачам", callback_data="quest_tasks")])
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    @staticmethod
+    def inventory_kb(inv_items: dict, items_db: dict) -> InlineKeyboardMarkup:
+        """Клавиатура инвентаря: зелья можно выпить, остальное - продать."""
+        buttons = []
+        for item_name, quantity in inv_items.items():
+            if quantity <= 0: continue
+
+            # Защита от пробелов и регистра при поиске
+            search_key = item_name.strip().lower()
+            item_def = items_db.get(search_key)
+
+            # Если предмета по какой-то причине нет в справочнике, не скрываем его!
+            # Выводим как обычный хлам за 1 золото.
+            if not item_def:
+                safe_name = item_name[:30]  # Обрезаем на случай лимитов Telegram
+                buttons.append([InlineKeyboardButton(text=f"🌕 Продать {item_name} (x{quantity}) за 1 🌕",
+                                                     callback_data=f"inv_sell_raw:{safe_name}")])
+                continue
+
+            unique_name = item_def.get("unique_name") if isinstance(item_def, dict) else getattr(item_def,
+                                                                                                 "unique_name")
+            i_type = item_def.get("type") if isinstance(item_def, dict) else getattr(item_def, "type", "junk")
+            i_price = item_def.get("price", 0) if isinstance(item_def, dict) else getattr(item_def, "price", 0)
+
+            if i_type == "potion":
+                buttons.append([InlineKeyboardButton(text=f"🧪 Выпить {item_name} (x{quantity})",
+                                                     callback_data=f"inv_use:{unique_name}")])
+            else:
+                sell_price = max(1, i_price // 2)
+                buttons.append([InlineKeyboardButton(text=f"🌕 Продать {item_name} (x{quantity}) за {sell_price} з.",
+                                                     callback_data=f"inv_sell:{unique_name}")])
+
         return InlineKeyboardMarkup(inline_keyboard=buttons)
 
     @staticmethod
@@ -111,3 +153,14 @@ class Keyboards:
         return InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🔙 Понятно", callback_data="quest_main")]
         ])
+
+
+    @staticmethod
+    def quest_actions_kb(actions: list) -> InlineKeyboardMarkup:
+        """Клавиатура покупки усилителей в квесте."""
+        buttons = []
+        for action in actions:
+            buttons.append([InlineKeyboardButton(text=f"Купить {action.display_name} ({action.price}🌕)",
+                                                 callback_data=f"quest_buy:{action.name}")])
+        buttons.append([InlineKeyboardButton(text="🔙 Назад к квесту", callback_data="quest_main")])
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
