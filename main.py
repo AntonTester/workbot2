@@ -23,8 +23,7 @@ from bot.texts import Texts
 # ==========================================
 BOT_TOKEN = "5470429630:AAHr7SitrPYToupP0ukJjt0ZH0LCnDu5GkI"  # Вставьте сюда токен от BotFather
 #BOT_TOKEN = "6451320447:AAEFDSNhzpm3Z9ahajLrzi4JbHBaohFrfRE"  # Вставьте сюда токен от BotFather
-ADMIN_ID = 505644694  # Вставьте сюда ВАШ Telegram ID!
-
+ADMIN_ID = 505644694
 
 async def main():
     # 1. Включаем базовое логирование, чтобы видеть ошибки в консоли
