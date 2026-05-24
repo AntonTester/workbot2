@@ -2,6 +2,8 @@ import asyncio
 import logging
 from aiogram import Bot, Dispatcher
 
+from bot import handlers_schedule
+from core.schedule_job import schedule_checker
 # Импорт баз данных и логики ядра
 from db.database import Database
 from db.template_repo import TemplateRepo
@@ -21,8 +23,8 @@ from bot.texts import Texts
 # ==========================================
 # КОНФИГУРАЦИЯ БОТА ы
 # ==========================================
-BOT_TOKEN = "5470429630:AAHr7SitrPYToupP0ukJjt0ZH0LCnDu5GkI"  # Вставьте сюда токен от BotFather
-#BOT_TOKEN = "6451320447:AAEFDSNhzpm3Z9ahajLrzi4JbHBaohFrfRE"  # Вставьте сюда токен от BotFather
+#BOT_TOKEN = "5470429630:AAHr7SitrPYToupP0ukJjt0ZH0LCnDu5GkI"  # Вставьте сюда токен от BotFather
+BOT_TOKEN = "6451320447:AAEFDSNhzpm3Z9ahajLrzi4JbHBaohFrfRE"  # Вставьте сюда токен от BotFather
 ADMIN_ID = 505644694
 
 async def main():
@@ -59,11 +61,12 @@ async def main():
     dp.include_router(shop_router)
     dp.include_router(quest_router)
     dp.include_router(inventory_router)
+    dp.include_router(handlers_schedule.router)
     print(Texts.BOT_STARTED)
 
     # Пропускаем старые сообщения, которые накопились пока бот был выключен
     await bot.delete_webhook(drop_pending_updates=True)
-
+    asyncio.create_task(schedule_checker(bot, db_instance, hero_controller))
     # Запускаем бесконечный цикл прослушивания сообщений
     await dp.start_polling(bot)
 

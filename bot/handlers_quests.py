@@ -42,6 +42,7 @@ async def back_to_quest_main(callback: CallbackQuery, hero):
     await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
+
 @router.callback_query(F.data == "quest_tasks")
 async def show_quest_tasks(callback: CallbackQuery, hero):
     """Выводит список задач, доступных на основе флагов."""
@@ -49,13 +50,20 @@ async def show_quest_tasks(callback: CallbackQuery, hero):
     tasks = q_ctrl.get_available_tasks()
 
     if not tasks:
-        await callback.answer("Нет доступных задач. Возможно, стоит подождать следующего дня или избавиться от усталости.", show_alert=True)
+        await callback.answer("Нет доступных задач. Возможно, стоит подождать следующего дня.", show_alert=True)
         return
 
-    # Передаем список задач в фабрику для динамической генерации кнопок
     kb = Keyboards.quest_tasks_kb(tasks)
 
-    await callback.message.edit_text("<b>Доступные задачи:</b>", reply_markup=kb, parse_mode="HTML")
+    # === ОБНОВЛЕНО: Формируем текст с историей выполненных заданий ===
+    text = "<b>Доступные задачи:</b>"
+
+    # Добавляем блок выполненных задач сверху, если они есть
+    completed_block = Texts._generate_completed_tasks_block(q_ctrl.quest)
+    if completed_block:
+        text = completed_block + "\n\n───────────────────────\n" + text
+
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
 @router.callback_query(F.data.startswith("task_info_"))

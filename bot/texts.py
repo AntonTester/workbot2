@@ -25,6 +25,7 @@ class Texts:
     BTN_INVENTORY = "Инвентарь и Крафт"
     BTN_SHOP = "Лавка алхимика"
     BOT_STARTED = "Осколки Воли: Бот запущен..."
+    BTN_TIME = "🗓 Расписание"
     WELCOME_TEXT = "Приветствую, наемник! Твоя воля расколота, но путь только начинается. Выбирай свое действие с умом."
 
     @staticmethod
@@ -304,7 +305,7 @@ class Texts:
 
     @staticmethod
     def quest_menu(quest) -> str:
-        """Генерирует главное меню активного квеста с историей событий."""
+        """Генерирует главное меню активного квеста с историей событий и выполненными задачами."""
         if not quest or quest.status != "active":
             return "🗺 <i>У вас нет активного квеста. Загляните на Доску Контрактов.</i>"
 
@@ -312,28 +313,28 @@ class Texts:
             f"🗺 <b>КВЕСТ: {quest.quest_name}</b>\n"
             f"───────────────────────\n"
             f"<i>{quest.description}</i>\n\n"
-            f"⏳ <b>День:</b> {quest.current_day+1} из {quest.max_days}\n"
-            f"🏆 <b>Награда:</b> 🌕 {quest.gold_reward} | 🔺 {quest.exp_reward} XP\n"
+            f"⏳ <b>День:</b> {quest.current_day} из {quest.max_days}\n"
+            f"🏆 <b>Награда:</b> 💰 {quest.gold_reward} | 🔺 {quest.exp_reward} XP\n"
         )
 
-        # === НОВЫЙ БЛОК: ИСТОРИЯ ЭВЕНТОВ ===
+        # 📖 Журнал событий
         text += "\n📖 <b>Журнал событий:</b>\n"
-
-        # Берем все эвенты от старта (0) до текущего дня (включительно)
-        # Обязательно проверяем длину списка, чтобы не словить ошибку IndexError
         for i in range(quest.current_day + 1):
             if i < len(quest.cycle_steps):
                 step = quest.cycle_steps[i]
-
-                # Поддерживаем как объекты (DataClasses), так и сырые словари (Dicts) из базы
                 step_num = step.number if hasattr(step, 'number') else step['number']
                 step_title = step.display_name if hasattr(step, 'display_name') else step['display_name']
                 step_desc = step.description if hasattr(step, 'description') else step['description']
 
-                text += f"  🔹 <b>{step_title}</b>\n"
+                text += f"  🔹 <b>День {step_num}: {step_title}</b>\n"
                 text += f"      <i>{step_desc}</i>\n\n"
 
-        return text.strip()  # Убираем лишние переносы строк в самом конце
+        text = text.strip()
+
+        # === НОВЫЙ БЛОК: Выполненные задания после журнала событий ===
+        text += Texts._generate_completed_tasks_block(quest)
+
+        return text.strip()
 
     @staticmethod
     def daily_event_message(day: int, title: str, desc: str) -> str:
@@ -402,4 +403,48 @@ class Texts:
                 f"🔺 <b>Опыт:</b> +{result.xp_reward}"
             )
 
+        return text
+
+    @staticmethod
+    def _generate_completed_tasks_block(quest) -> str:
+        """Вспомогательный метод для сбора истории успешно выполненных задач."""
+        completed_tasks = []
+        q_flags = set(quest.flags)
+
+        for task in quest.task_steps:
+            # Ищем, есть ли среди проверок этой задачи хоть один успешный флаг,
+            # который сейчас проставлен в квесте
+            is_task_success = False
+            success_msg = ""
+
+            for check in task.checks:
+                for eff in check.success_effects:
+                    # Проверяем, что эффект — это флаг, и он есть у квеста
+                    eff_type = eff.type_effect if hasattr(eff, 'type_effect') else eff.get('type_effect')
+                    eff_value = eff.value if hasattr(eff, 'value') else eff.get('value')
+
+                    if eff_type == "flag" and eff_value in q_flags:
+                        is_task_success = True
+                        success_msg = check.success_message if hasattr(check, 'success_message') else check.get(
+                            'success_message', '')
+                        break
+                if is_task_success:
+                    break
+
+            if is_task_success:
+                # Если у проверки нет кастомного сообщения успеха, пишем стандартное
+                msg = success_msg if success_msg else "Задача успешно решена."
+                completed_tasks.append(f"  ✅ <b>{task.display_name}</b>\n      <i>{msg}</i>")
+
+        if completed_tasks:
+            return "\n\n🏁 <b>Выполненные задачи:</b>\n" + "\n\n".join(completed_tasks)
+        return ""
+
+    @staticmethod
+    def schedule_main(next_task) -> str:
+        text = "🗓 <b>РАСПИСАНИЕ ДНЯ</b>\n───────────────────────\n"
+        if next_task:
+            text += f"🔜 <b>Ближайшее дело:</b>\n{next_task['time_str']} — {next_task['task_text']}\n"
+        else:
+            text += "<i>На сегодня дел больше нет или расписание пусто.</i>\n"
         return text

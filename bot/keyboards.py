@@ -11,7 +11,7 @@ class Keyboards:
         return ReplyKeyboardMarkup(
             keyboard=[
                 [KeyboardButton(text=Texts.BTN_PROFILE), KeyboardButton(text=Texts.BTN_CONTRACTS)],
-                [KeyboardButton(text=Texts.BTN_QUEST)],
+                [KeyboardButton(text=Texts.BTN_QUEST),KeyboardButton(text=Texts.BTN_TIME)],
                 [KeyboardButton(text=Texts.BTN_INVENTORY), KeyboardButton(text=Texts.BTN_SHOP)]
             ],
             resize_keyboard=True,
@@ -164,3 +164,18 @@ class Keyboards:
                                                  callback_data=f"quest_buy:{action.name}")])
         buttons.append([InlineKeyboardButton(text="🔙 Назад к квесту", callback_data="quest_main")])
         return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+    @staticmethod
+    def schedule_menu_kb(has_schedule: bool) -> InlineKeyboardMarkup:
+        buttons = []
+        if has_schedule:
+            buttons.append([InlineKeyboardButton(text="📋 Текущее расписание", callback_data="sched_show")])
+        buttons.append([InlineKeyboardButton(text="✏️ Новое расписание", callback_data="sched_new")])
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    @staticmethod
+    def schedule_done_kb(log_id: int) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Я сделал!", callback_data=f"sched_done:{log_id}")]
+        ])

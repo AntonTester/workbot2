@@ -1,53 +1,49 @@
 import sqlite3
 
 
-def run_migration():
-    # Подключаемся к нашей боевой базе
+def run_schedule_migration():
     conn = sqlite3.connect("oskolki.db")
     cursor = conn.cursor()
 
     try:
-        print("Начинаем миграцию...")
+        print("Начинаем миграцию расписания...")
 
-        # 1. Сначала удаляем существующие дубли статусов у игроков
-        # (оставляем только запись с максимальным id, то есть самую свежую)
+        # Таблица самого расписания
         cursor.execute("""
-            DELETE FROM statuses
-            WHERE id NOT IN (
-                SELECT MAX(id)
-                FROM statuses
-                GROUP BY user_id, name
-            )
-        """)
-        print("Дубликаты успешно вычищены.")
-
-        # 2. Создаем новую временную таблицу с правильным UNIQUE
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS statuses_new (
+            CREATE TABLE IF NOT EXISTS schedules (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
-                name TEXT,
-                type TEXT,
-                expires_at TIMESTAMP,
-                UNIQUE(user_id, name)
+                day_idx INTEGER, -- 0=ПН, 6=ВС
+                time_str TEXT,   -- 'HH:MM'
+                task_text TEXT
             )
         """)
 
-        # 3. Переливаем очищенные данные из старой таблицы в новую
-        cursor.execute("INSERT INTO statuses_new SELECT * FROM statuses")
+        # Таблица логов на сегодня (чтобы отслеживать, уведомили или оштрафовали)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS schedule_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                schedule_id INTEGER,
+                log_date DATE,
+                status TEXT -- 'notified', 'damaged', 'done'
+            )
+        """)
 
-        # 4. Удаляем старую таблицу и переименовываем новую на её место
-        cursor.execute("DROP TABLE statuses")
-        cursor.execute("ALTER TABLE statuses_new RENAME TO statuses")
+        # Добавляем валюту "Звездочки", если ее нет (перехватываем ошибку, если уже есть)
+        try:
+            cursor.execute("ALTER TABLE characters ADD COLUMN stars INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass  # Колонка уже существует
 
         conn.commit()
-        print("✅ Миграция успешно завершена! Таблица statuses обновлена.")
+        print("✅ Миграция расписания успешно завершена!")
     except Exception as e:
         conn.rollback()
-        print(f"❌ Ошибка миграции: {e}")
+        print(f"❌ Ошибка: {e}")
     finally:
         conn.close()
 
 
 if __name__ == "__main__":
-    run_migration()
+    run_schedule_migration()
