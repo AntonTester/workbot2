@@ -23,8 +23,8 @@ from bot.texts import Texts
 # ==========================================
 # КОНФИГУРАЦИЯ БОТА ы
 # ==========================================
-#BOT_TOKEN = "5470429630:AAHr7SitrPYToupP0ukJjt0ZH0LCnDu5GkI"  # Вставьте сюда токен от BotFather
-BOT_TOKEN = "6451320447:AAEFDSNhzpm3Z9ahajLrzi4JbHBaohFrfRE"  # Вставьте сюда токен от BotFather
+BOT_TOKEN = "5470429630:AAHr7SitrPYToupP0ukJjt0ZH0LCnDu5GkI"  # Вставьте сюда токен от BotFather
+#BOT_TOKEN = "6451320447:AAEFDSNhzpm3Z9ahajLrzi4JbHBaohFrfRE"  # Вставьте сюда токен от BotFather
 ADMIN_ID = 505644694
 
 async def main():
