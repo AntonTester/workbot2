@@ -317,17 +317,6 @@ class Texts:
             f"🏆 <b>Награда:</b> 💰 {quest.gold_reward} | 🔺 {quest.exp_reward} XP\n"
         )
 
-        # 📖 Журнал событий
-        text += "\n📖 <b>Журнал событий:</b>\n"
-        for i in range(quest.current_day + 1):
-            if i < len(quest.cycle_steps):
-                step = quest.cycle_steps[i]
-                step_num = step.number if hasattr(step, 'number') else step['number']
-                step_title = step.display_name if hasattr(step, 'display_name') else step['display_name']
-                step_desc = step.description if hasattr(step, 'description') else step['description']
-
-                text += f"  🔹 <b>День {step_num}: {step_title}</b>\n"
-                text += f"      <i>{step_desc}</i>\n\n"
 
         text = text.strip()
 
